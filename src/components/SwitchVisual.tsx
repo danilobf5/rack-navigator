@@ -148,6 +148,22 @@ export default function SwitchVisual({ rack, onBack }: SwitchVisualProps) {
         </p>
       </div>
 
+      {rack.ip && /^\d+\.\d+\.\d+\.\d+$/.test(rack.ip.trim()) && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => window.open(`http://${rack.ip.trim()}`, "_blank")}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors active:scale-[0.97] shadow-sm"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Acessar Switch ({rack.ip.trim()})
+          </button>
+        </div>
+      )}
+
       <PortGrid ports={rack.ports} totalPorts={rack.switchPorts} label="Switch" rackGid={rack.id} />
 
       {rack.hasPatchPanel && rack.patchPanelData.length > 0 && (
