@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { PortInfo, RackData } from "@/data/networkData";
+import type { PortInfo, RackData } from "@/lib/googleSheets";
+import { SPREADSHEET_ID } from "@/data/centersConfig";
 import { cn } from "@/lib/utils";
 
 interface SwitchVisualProps {
@@ -24,10 +25,15 @@ function isLink(ref: string) {
   return lower.includes("link") || lower.includes("envia");
 }
 
-function PortGrid({ ports, totalPorts, label }: { ports: PortInfo[]; totalPorts: number; label: string }) {
+function openSpreadsheetCell(port: PortInfo, rackGid: string) {
+  // Open the Google Sheet at the relevant sheet
+  const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit#gid=${rackGid}`;
+  window.open(url, "_blank");
+}
+
+function PortGrid({ ports, totalPorts, label, rackGid }: { ports: PortInfo[]; totalPorts: number; label: string; rackGid: string }) {
   const [hoveredPort, setHoveredPort] = useState<PortInfo | null>(null);
 
-  // Build rows of 2 (top/bottom like real switch)
   const topRow: PortInfo[] = [];
   const bottomRow: PortInfo[] = [];
   for (let i = 0; i < totalPorts; i++) {
@@ -44,7 +50,6 @@ function PortGrid({ ports, totalPorts, label }: { ports: PortInfo[]; totalPorts:
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{label}</h3>
 
-      {/* Tooltip */}
       <div className="h-16 flex items-center justify-center">
         {hoveredPort ? (
           <div
@@ -71,7 +76,6 @@ function PortGrid({ ports, totalPorts, label }: { ports: PortInfo[]; totalPorts:
         )}
       </div>
 
-      {/* Switch body */}
       <div className="bg-primary/95 rounded-xl p-4 shadow-xl border border-primary/80 overflow-x-auto">
         <div className="flex flex-col gap-1.5 min-w-fit">
           {[topRow, bottomRow].map((row, ri) => (
@@ -81,6 +85,7 @@ function PortGrid({ ports, totalPorts, label }: { ports: PortInfo[]; totalPorts:
                   key={p.port}
                   onMouseEnter={() => setHoveredPort(p)}
                   onMouseLeave={() => setHoveredPort(null)}
+                  onClick={() => openSpreadsheetCell(p, rackGid)}
                   className={cn(
                     "w-7 h-7 sm:w-8 sm:h-8 rounded-sm flex items-center justify-center",
                     "text-[9px] sm:text-[10px] font-bold text-white",
@@ -101,7 +106,6 @@ function PortGrid({ ports, totalPorts, label }: { ports: PortInfo[]; totalPorts:
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex gap-4 text-xs text-muted-foreground justify-center pt-1">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" /> Ativo
@@ -125,7 +129,7 @@ export default function SwitchVisual({ rack, onBack }: SwitchVisualProps) {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-97"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -134,22 +138,22 @@ export default function SwitchVisual({ rack, onBack }: SwitchVisualProps) {
       </button>
 
       <div className="text-center space-y-1">
-        <h2 className="text-2xl font-bold text-foreground tracking-tight">{rack.name}</h2>
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">{rack.name || rack.local}</h2>
         <p className="text-sm text-muted-foreground">
-          Switch {rack.switchPorts} portas{rack.sfpPorts > 0 ? ` + ${rack.sfpPorts} SFP` : ""}
+          Switch {rack.switchPorts} portas
           {rack.hasPatchPanel ? " • Patch Panel" : ""}
+          {rack.ip ? ` • IP: ${rack.ip}` : ""}
           <span className="mx-2">•</span>
           Atualizado: {rack.lastUpdate}
         </p>
       </div>
 
-      <PortGrid ports={rack.ports} totalPorts={rack.switchPorts} label="Switch" />
+      <PortGrid ports={rack.ports} totalPorts={rack.switchPorts} label="Switch" rackGid={rack.id} />
 
-      {rack.hasPatchPanel && rack.patchPanelData && (
-        <PortGrid ports={rack.patchPanelData} totalPorts={rack.patchPanelPorts || 24} label="Patch Panel" />
+      {rack.hasPatchPanel && rack.patchPanelData.length > 0 && (
+        <PortGrid ports={rack.patchPanelData} totalPorts={rack.patchPanelPorts} label="Patch Panel" rackGid={rack.id} />
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3 pt-2">
         {[
           { label: "Ativas", value: rack.ports.filter((p) => p.status === "ok").length, color: "text-emerald-600" },
@@ -163,7 +167,6 @@ export default function SwitchVisual({ rack, onBack }: SwitchVisualProps) {
         ))}
       </div>
 
-      {/* Full port table */}
       <details className="group">
         <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
           Ver tabela completa de portas

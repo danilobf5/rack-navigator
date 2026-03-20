@@ -1,85 +1,139 @@
-import { allRacks, rackConnections, type RackData } from "@/data/networkData";
+import { useState, useEffect } from "react";
+import type { CenterConfig } from "@/data/centersConfig";
+import { fetchSheetData, type RackData } from "@/lib/googleSheets";
 import { cn } from "@/lib/utils";
 import rackSecretaria from "@/assets/rack-secretaria.jpeg";
 import rackCoordenacao from "@/assets/rack-coordenacao.jpeg";
 import rackDirecao from "@/assets/rack-direcao.jpeg";
 
+// Rack images only available for Odonto currently
 const rackImages: Record<string, string> = {
-  secretaria: rackSecretaria,
-  coordenacao: rackCoordenacao,
-  direcao: rackDirecao,
+  "143893557": rackSecretaria,
+  "978649700": rackCoordenacao,
+  "746902921": rackDirecao,
 };
 
 interface RackOverviewProps {
+  center: CenterConfig;
   onSelectRack: (rack: RackData) => void;
+  onBack: () => void;
 }
 
-export default function RackOverview({ onSelectRack }: RackOverviewProps) {
+export default function RackOverview({ center, onSelectRack, onBack }: RackOverviewProps) {
+  const [racks, setRacks] = useState<RackData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    Promise.all(center.sheets.map((s) => fetchSheetData(s.gid)))
+      .then((data) => {
+        if (!cancelled) {
+          // Use sheet labels as fallback names
+          const named = data.map((r, i) => ({
+            ...r,
+            name: r.name || r.local || center.sheets[i].label,
+          }));
+          setRacks(named);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError("Erro ao carregar dados da planilha");
+          setLoading(false);
+          console.error(err);
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [center]);
+
   const activeCount = (r: RackData) => r.ports.filter((p) => p.status === "ok").length;
   const issueCount = (r: RackData) => r.ports.filter((p) => p.status === "issue").length;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header */}
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97]"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Voltar aos centros
+      </button>
+
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-foreground" style={{ lineHeight: "1.1" }}>
-          Mapa de Rede — Odontologia
+          {center.name}
         </h1>
-        <p className="text-muted-foreground text-sm max-w-md mx-auto">
-          Clique em um rack para visualizar as portas do switch e suas conexões
-        </p>
+        <p className="text-muted-foreground text-sm">{center.description}</p>
       </div>
 
-      {/* Topology diagram */}
-      <div className="relative flex flex-col items-center gap-4">
-        {/* Coordenação on top */}
-        <RackCard rack={allRacks[1]} image={rackImages.coordenacao} active={activeCount(allRacks[1])} issues={issueCount(allRacks[1])} onClick={() => onSelectRack(allRacks[1])} />
-
-        {/* Connection lines */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="w-16 h-px bg-blue-400" />
-          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded font-medium border border-blue-200 whitespace-nowrap">
-            PT 1 ↔ PT 2
-          </span>
-          <div className="w-16 h-px bg-blue-400" />
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {center.sheets.map((s) => (
+            <div key={s.gid} className="bg-card border rounded-xl overflow-hidden shadow-sm animate-pulse">
+              <div className="aspect-[4/3] bg-muted" />
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-muted rounded w-2/3" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
-
-        {/* Bottom row: Secretaria and Direção */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start w-full justify-center">
-          <RackCard rack={allRacks[0]} image={rackImages.secretaria} active={activeCount(allRacks[0])} issues={issueCount(allRacks[0])} onClick={() => onSelectRack(allRacks[0])} />
-
-          {/* Connection between Secretaria and Direção */}
-          <div className="flex sm:flex-col items-center justify-center gap-1 self-center">
-            <div className="w-px h-8 sm:w-12 sm:h-px bg-blue-400" />
-            <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 whitespace-nowrap">
-              PT 8 ↔ PT 24
-            </span>
-            <div className="w-px h-8 sm:w-12 sm:h-px bg-blue-400" />
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-destructive font-medium">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {racks.map((rack, i) => (
+              <RackCard
+                key={rack.id}
+                rack={rack}
+                label={center.sheets[i]?.label || rack.name}
+                image={rackImages[rack.id]}
+                active={activeCount(rack)}
+                issues={issueCount(rack)}
+                onClick={() => onSelectRack(rack)}
+              />
+            ))}
           </div>
 
-          <RackCard rack={allRacks[2]} image={rackImages.direcao} active={activeCount(allRacks[2])} issues={issueCount(allRacks[2])} onClick={() => onSelectRack(allRacks[2])} />
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto">
-        <SummaryCard label="Total Portas" value={allRacks.reduce((s, r) => s + r.switchPorts, 0)} />
-        <SummaryCard label="Ativas" value={allRacks.reduce((s, r) => s + activeCount(r), 0)} color="text-emerald-600" />
-        <SummaryCard label="Problemas" value={allRacks.reduce((s, r) => s + issueCount(r), 0)} color="text-amber-600" />
-      </div>
+          <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto">
+            <SummaryCard label="Total Portas" value={racks.reduce((s, r) => s + r.ports.length, 0)} />
+            <SummaryCard label="Ativas" value={racks.reduce((s, r) => s + activeCount(r), 0)} color="text-emerald-600" />
+            <SummaryCard label="Problemas" value={racks.reduce((s, r) => s + issueCount(r), 0)} color="text-amber-600" />
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 function RackCard({
   rack,
+  label,
   image,
   active,
   issues,
   onClick,
 }: {
   rack: RackData;
-  image: string;
+  label: string;
+  image?: string;
   active: number;
   issues: number;
   onClick: () => void;
@@ -90,14 +144,27 @@ function RackCard({
       className={cn(
         "group relative bg-card border rounded-xl overflow-hidden shadow-md",
         "hover:shadow-xl hover:-translate-y-1 transition-all duration-300",
-        "active:scale-[0.97] cursor-pointer w-full sm:w-56 text-left"
+        "active:scale-[0.97] cursor-pointer w-full text-left"
       )}
     >
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
-        <img src={image} alt={`Rack ${rack.name}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-      </div>
+      {image ? (
+        <div className="aspect-[4/3] overflow-hidden bg-muted">
+          <img src={image} alt={label} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        </div>
+      ) : (
+        <div className="aspect-[4/3] bg-muted flex items-center justify-center">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-muted-foreground/30">
+            <rect x="2" y="2" width="20" height="20" rx="2" />
+            <line x1="2" y1="8" x2="22" y2="8" />
+            <line x1="2" y1="14" x2="22" y2="14" />
+            <circle cx="6" cy="5" r="1" fill="currentColor" />
+            <circle cx="6" cy="11" r="1" fill="currentColor" />
+            <circle cx="6" cy="17" r="1" fill="currentColor" />
+          </svg>
+        </div>
+      )}
       <div className="p-3 space-y-1.5">
-        <h3 className="font-bold text-sm text-foreground">{rack.name}</h3>
+        <h3 className="font-bold text-sm text-foreground">{label}</h3>
         <p className="text-xs text-muted-foreground">
           {rack.switchPorts} portas{rack.hasPatchPanel ? " + Patch Panel" : ""}
         </p>
