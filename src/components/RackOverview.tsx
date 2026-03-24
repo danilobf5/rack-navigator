@@ -6,11 +6,78 @@ import rackSecretaria from "@/assets/rack-secretaria.jpeg";
 import rackCoordenacao from "@/assets/rack-coordenacao.jpeg";
 import rackDirecao from "@/assets/rack-direcao.jpeg";
 
+//ccs
+import nitccs from "@/assets/nti-css.jpg";
+import coordenacao from "@/assets/coordenacao-ccs.jpg";
+import clinicafisiocss from "@/assets/clinica-fisio-ccs.jpg";
+import labinfo from "@/assets/lab-info-ccs.jpg";
+import secretatia from "@/assets/secretaria-css.jpg";
+import sala1 from "@/assets/LabSala01.jpg"
+//import anatomia from "@/assets/"
+
+//ccsa 
+import nticcsa from "@/assets/nti-ccsa.jpg";
+import nedji from "@/assets/neddij.jpg";
+import cozinha from "@/assets/cozinha-ccsa.jpg";
+import escmodelo from "@/assets/escritoriomodelo-cssa.jpg";
+import numape from "@/assets/numape-ccsa.jpg"
+import redondo from "@/assets/redondo-ccsa.jpg";
+import permanencia from "@/assets/permanencia.jpg";
+import nutrab from "@/assets/nutrab-ccsa.jpg";
+
+
+//cche - clca
+
+import nticche from "@/assets/nti-cche.jpg";
+import sala1bloco1 from "@/assets/sala01-cche.jpg";
+import bloco4 from "@/assets/bloco4-cche.jpg";
+import biblioteca from "@/assets/bibliotecacche.jpg";
+import nip from "@/assets/nip-cche.jpg";
+import bloco3 from "@/assets/bloco3-cche.jpg";
+import lephis from "@/assets/lephis-cche.jpg";
+import lablinguas from "@/assets/labdelinguas-cche.jpg";
+import protocolo from "@/assets/protocolo-cche.jpg";
+import pde from "@/assets/pde-cche.jpg";
+
+
+ //fisio nova adicionar 
+
 // Rack images only available for Odonto currently
 const rackImages: Record<string, string> = {
+  //odonto
   "143893557": rackSecretaria,
   "978649700": rackCoordenacao,
   "746902921": rackDirecao,
+//ccs
+  "1204722652": nitccs,
+  "1655472860": coordenacao,
+  "767634641": clinicafisiocss,
+  "1087906177": labinfo,
+  "1399751983": secretatia,
+  "1533163405": sala1,
+//ccsa
+  "789149736": nticcsa,
+  "331673426": nedji,
+  "174695111": cozinha,
+  "539395034": escmodelo,
+  "362502791": numape,
+  "592217742": redondo,
+  "1296308199": permanencia,
+  "1740321488": nutrab,
+//cche
+  "1420631301": nticche,
+  "2000761443": sala1bloco1,
+  "1451969730": bloco4,
+  "2035284198" : biblioteca,
+  "299908453": nip,
+  "1433182245" : bloco3,
+  "1847526576" : lephis,
+  "34946942": lablinguas,
+  "421707565": protocolo,
+  "1364729471": pde
+
+  //fisioterapia
+
 };
 
 interface RackOverviewProps {

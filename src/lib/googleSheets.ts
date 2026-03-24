@@ -49,8 +49,10 @@ function parseCSVLine(line: string): string[] {
 function parseStatus(raw: string): PortInfo["status"] {
   const s = raw.trim().toUpperCase();
   if (s === "OK") return "ok";
-  if (s === "***" || s === "" || s.includes("VAZIO")) return "empty";
-  return "issue";
+  if (s === "***" || s === "" || s.includes("VAZIO") || s === "FALHA" || s === "X") {
+     return (s === "FALHA" || s === "X") ? "issue" : "empty";
+  }
+  return "ok";
 }
 
 export async function fetchSheetData(gid: string): Promise<RackData> {
@@ -58,75 +60,61 @@ export async function fetchSheetData(gid: string): Promise<RackData> {
   const res = await fetch(url);
   const text = await res.text();
   const lines = text.split("\n").filter((l) => l.trim());
-
-  // Parse all lines
   const rows = lines.map(parseCSVLine);
 
-  // Extract metadata from column A (rows 1-7, 0-indexed after header)
-  let local = "";
-  let lastUpdate = "";
-  let ip = "";
-  let rackName = "";
+  // Metadados (Coluna A)
+  let local = rows[1]?.[0] || "";
+  let lastUpdate = rows[3]?.[0] || "";
+  let ip = rows[5]?.[0] || "";
+  let rackName = rows[7]?.[0] || "";
 
-  // Row 0 is header, rows 1+ are data
-  // Col A metadata pattern: LOCAL_VALUE, "ULTIMA ATUALIZAÇÃO...", date, "IP", ip, "NOME DO RACK", rackName
-  if (rows.length > 1) local = rows[1][0] || "";
-  if (rows.length > 3) lastUpdate = rows[3][0] || "";
-  if (rows.length > 5) ip = rows[5][0] || "";
-  if (rows.length > 7) rackName = rows[7][0] || "";
-
-  // Determine column layout from header
+  // Busca de Colunas
   const header = rows[0];
-  const refCol = header.findIndex((h) => h.toUpperCase().includes("REFERÊNCIA"));
-  const portCol = header.findIndex((h) => h.toUpperCase().includes("NUN_PORTA") || h.toUpperCase().includes("PORTA"));
-  const statusCol = header.findIndex((h) => h.toUpperCase().includes("STATUS"));
-  const switchCol = header.findIndex((h) => h.toUpperCase().includes("SWITCH"));
-  const patchCol = header.findIndex((h) => h.toUpperCase().includes("PATCH") || h.toUpperCase().includes("CABO"));
+  const refCol = header.findIndex(h => h.toUpperCase().includes("REFERÊNCIA"));
+  const portCol = header.findIndex(h => h.toUpperCase().includes("PORTA") || h.toUpperCase().includes("NUN"));
+  const statusCol = header.findIndex(h => h.toUpperCase().includes("STATU") || h.toUpperCase().includes("OK"));
+  const typeCol = header.findIndex(h => h.toUpperCase().includes("SWITCH") || h.toUpperCase().includes("PATCH"));
 
-  const ports: PortInfo[] = [];
+  const allPorts: PortInfo[] = [];
   const patchPanelData: PortInfo[] = [];
-  let isPatchPanelSection = false;
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
+    
+    // Pula linhas de cabeçalho repetidas no meio da planilha
+    if (row[refCol]?.toUpperCase().includes("REFERÊNCIA")) continue;
 
-    // Detect second header (patch panel section)
-    if (row[0]?.toUpperCase().includes("LOCAL") && i > 1) {
-      isPatchPanelSection = true;
-      continue;
-    }
-
-    const portNum = parseInt(row[portCol >= 0 ? portCol : 3], 10);
+    const portNum = parseInt(row[portCol], 10);
     if (isNaN(portNum)) continue;
 
-    const reference = row[refCol >= 0 ? refCol : 1] || "VAZIO";
-    const switchId = row[switchCol >= 0 ? switchCol : 2] || "";
-    const statusRaw = row[statusCol >= 0 ? statusCol : 4] || "";
-    const patchPanelPort = !isPatchPanelSection && patchCol >= 0 ? row[patchCol] || "" : "";
+    const reference = row[refCol] || "VAZIO";
+    const statusRaw = row[statusCol] || "";
+    const deviceType = row[typeCol]?.toUpperCase() || ""; // Pega o texto da Coluna C (SWITCH DE CIMA / DE BAIXO)
 
-    // Determine status
     let status = parseStatus(statusRaw);
-    if (reference.toUpperCase() === "VAZIO" && status === "ok") status = "empty";
-    if (reference.toUpperCase() === "VAZIO") status = "empty";
+    if (reference.toUpperCase().includes("VAZIO")) status = "empty";
 
-    const port: PortInfo = {
+    const portObj: PortInfo = {
       port: portNum,
-      reference,
+      reference: reference === '"""' ? "Repetição" : reference,
       status,
-      switchId,
-      ...(patchPanelPort ? { patchPanelPort } : {}),
+      switchId: deviceType, // Aqui guardamos se é "DE CIMA" ou "DE BAIXO"
     };
 
-    if (isPatchPanelSection) {
-      patchPanelData.push(port);
+    // LOGICA DE DISTRIBUIÇÃO:
+    // Se na coluna C (deviceType) aparecer "PATCH", vai para o patchPanelData
+    // Caso contrário (se for SWITCH ou qualquer outra coisa), vai para ports
+    if (deviceType.includes("PATCH") || deviceType.includes("PTCH")) {
+      patchPanelData.push(portObj);
     } else {
-      ports.push(port);
+      allPorts.push(portObj);
     }
   }
 
-  // Determine switchPorts from max port number (round up to 24 or 48)
-  const maxPort = ports.reduce((m, p) => Math.max(m, p.port), 0);
-  const switchPorts = maxPort <= 24 ? 24 : 48;
+  // Se você tem duas switches de 24, o total de portas é 48 ou 52
+  const totalPortsFound = allPorts.length;
+  let visualSwitchPorts = 24;
+  if (totalPortsFound > 24) visualSwitchPorts = 52; // Ajustado para o seu padrão de 52
 
   return {
     id: gid,
@@ -134,11 +122,11 @@ export async function fetchSheetData(gid: string): Promise<RackData> {
     local,
     ip,
     rackName,
-    switchPorts,
+    switchPorts: visualSwitchPorts,
     hasPatchPanel: patchPanelData.length > 0,
-    patchPanelPorts: patchPanelData.length > 0 ? Math.max(...patchPanelData.map((p) => p.port), 24) : 0,
-    ports,
-    patchPanelData,
+    patchPanelPorts: patchPanelData.length > 0 ? Math.max(...patchPanelData.map(p => p.port)) : 0,
+    ports: allPorts, // Aqui estão as portas da Switch 1 + Switch 2
+    patchPanelData: patchPanelData,
     lastUpdate,
   };
 }
