@@ -1,5 +1,7 @@
 import { SPREADSHEET_ID } from "@/data/centersConfig";
 
+// --- Interfaces ---
+
 export interface PortInfo {
   port: number;
   reference: string;
@@ -8,19 +10,25 @@ export interface PortInfo {
   patchPanelPort?: string;
 }
 
+export interface NetworkDevice {
+  id: string;
+  type: "SWITCH" | "PATCH_PANEL";
+  name: string;
+  ports: PortInfo[];
+  totalPorts: number;
+}
+
 export interface RackData {
   id: string;
   name: string;
   local: string;
   ip: string;
-  rackName: string;
-  switchPorts: number;
-  hasPatchPanel: boolean;
-  patchPanelPorts: number;
-  ports: PortInfo[];
-  patchPanelData: PortInfo[];
   lastUpdate: string;
+  devices: NetworkDevice[];
+  ports?: PortInfo[]; 
 }
+
+// --- Funções de Tratamento de Dados ---
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
@@ -46,87 +54,108 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+/**
+ * Define a cor da porta baseado no texto da planilha
+ */
 function parseStatus(raw: string): PortInfo["status"] {
   const s = raw.trim().toUpperCase();
+
+  // VERDE: OK
   if (s === "OK") return "ok";
-  if (s === "***" || s === "" || s.includes("VAZIO") || s === "FALHA" || s === "X") {
-     return (s === "FALHA" || s === "X") ? "issue" : "empty";
+
+  // AMARELO: X, Problema, Falha ou Cortado
+  if (s === "X" || s.includes("PROBLEMA") || s.includes("FALHA") || s.includes("CORTADO")) {
+    return "issue";
   }
-  return "ok";
+
+  // CINZA: Vazio, ***, Inutilizado ou campo em branco
+  if (s === "***" || s === "" || s.includes("VAZIO") || s === "INUTILIZADO") {
+    return "empty";
+  }
+
+  // Padrão: Se tiver texto e não for erro, assume Ativo (Verde)
+  return s.length > 0 ? "ok" : "empty";
 }
+
+// --- Função Principal de Busca ---
 
 export async function fetchSheetData(gid: string): Promise<RackData> {
   const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
   const res = await fetch(url);
   const text = await res.text();
-  const lines = text.split("\n").filter((l) => l.trim());
-  const rows = lines.map(parseCSVLine);
+  const rows = text.split("\n").map(parseCSVLine);
 
-  // Metadados (Coluna A)
-  let local = rows[1]?.[0] || "";
-  let lastUpdate = rows[3]?.[0] || "";
-  let ip = rows[5]?.[0] || "";
-  let rackName = rows[7]?.[0] || "";
+  const devicesByColumn: Map<number, { name: string; ports: PortInfo[] }> = new Map();
+  const header = rows[0] || [];
 
-  // Busca de Colunas
-  const header = rows[0];
-  const refCol = header.findIndex(h => h.toUpperCase().includes("REFERÊNCIA"));
-  const portCol = header.findIndex(h => h.toUpperCase().includes("PORTA") || h.toUpperCase().includes("NUN"));
-  const statusCol = header.findIndex(h => h.toUpperCase().includes("STATU") || h.toUpperCase().includes("OK"));
-  const typeCol = header.findIndex(h => h.toUpperCase().includes("SWITCH") || h.toUpperCase().includes("PATCH"));
+  // 1. Identifica as colunas de Switch/Patch Panel
+  const deviceColumnIndices: number[] = [];
+  header.forEach((colName, index) => {
+    const name = colName.toUpperCase();
+    if (name.includes("SWITCH") || name.includes("PATCH") || name.includes("PAINEL")) {
+      deviceColumnIndices.push(index);
+    }
+  });
 
-  const allPorts: PortInfo[] = [];
-  const patchPanelData: PortInfo[] = [];
-
+  // 2. Coleta os dados de cada linha
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    
-    // Pula linhas de cabeçalho repetidas no meio da planilha
-    if (row[refCol]?.toUpperCase().includes("REFERÊNCIA")) continue;
+    if (!row) continue;
 
-    const portNum = parseInt(row[portCol], 10);
-    if (isNaN(portNum)) continue;
+    deviceColumnIndices.forEach((colIndex) => {
+      const portNum = parseInt(row[colIndex + 1], 10);
+      const statusRaw = row[colIndex + 2]?.trim();
+      const referenceRaw = row[colIndex - 1]?.trim() || "VAZIO";
 
-    const reference = row[refCol] || "VAZIO";
-    const statusRaw = row[statusCol] || "";
-    const deviceType = row[typeCol]?.toUpperCase() || ""; // Pega o texto da Coluna C (SWITCH DE CIMA / DE BAIXO)
+      if (!isNaN(portNum)) {
+        if (!devicesByColumn.has(colIndex)) {
+          devicesByColumn.set(colIndex, { 
+            name: header[colIndex] || "Dispositivo", 
+            ports: [] 
+          });
+        }
 
-    let status = parseStatus(statusRaw);
-    if (reference.toUpperCase().includes("VAZIO")) status = "empty";
+        const device = devicesByColumn.get(colIndex)!;
+        
+        // --- AQUI ESTÁ A LÓGICA DE VALIDAÇÃO QUE VOCÊ PEDIU ---
+        let finalStatus = parseStatus(statusRaw || "");
+        let finalReference = referenceRaw;
 
-    const portObj: PortInfo = {
-      port: portNum,
-      reference: reference === '"""' ? "Repetição" : reference,
-      status,
-      switchId: deviceType, // Aqui guardamos se é "DE CIMA" ou "DE BAIXO"
-    };
+        // Se a referência for estrelas ou a palavra VAZIO, força o status para cinza
+        if (finalReference === "***" || finalReference.toUpperCase() === "VAZIO") {
+          finalStatus = "empty";
+        }
 
-    // LOGICA DE DISTRIBUIÇÃO:
-    // Se na coluna C (deviceType) aparecer "PATCH", vai para o patchPanelData
-    // Caso contrário (se for SWITCH ou qualquer outra coisa), vai para ports
-    if (deviceType.includes("PATCH") || deviceType.includes("PTCH")) {
-      patchPanelData.push(portObj);
-    } else {
-      allPorts.push(portObj);
-    }
+        device.ports.push({
+          port: portNum,
+          reference: finalReference,
+          status: finalStatus,
+        });
+      }
+    });
   }
 
-  // Se você tem duas switches de 24, o total de portas é 48 ou 52
-  const totalPortsFound = allPorts.length;
-  let visualSwitchPorts = 24;
-  if (totalPortsFound > 24) visualSwitchPorts = 52; // Ajustado para o seu padrão de 52
+  // 3. Formata os dispositivos para o componente visual
+  const devices: NetworkDevice[] = Array.from(devicesByColumn.values()).map((dev) => {
+    const maxPort = Math.max(...dev.ports.map(p => p.port));
+    // Define layout: se passar de 24, assume padrão de 48/52 portas
+    const totalPorts = maxPort > 24 ? 52 : 24;
+
+    return {
+      id: dev.name,
+      name: dev.name,
+      type: dev.name.toUpperCase().includes("PATCH") ? "PATCH_PANEL" : "SWITCH",
+      ports: dev.ports.sort((a, b) => a.port - b.port),
+      totalPorts: totalPorts
+    };
+  });
 
   return {
     id: gid,
-    name: rackName || local,
-    local,
-    ip,
-    rackName,
-    switchPorts: visualSwitchPorts,
-    hasPatchPanel: patchPanelData.length > 0,
-    patchPanelPorts: patchPanelData.length > 0 ? Math.max(...patchPanelData.map(p => p.port)) : 0,
-    ports: allPorts, // Aqui estão as portas da Switch 1 + Switch 2
-    patchPanelData: patchPanelData,
-    lastUpdate,
+    name: rows[7]?.[0] || rows[1]?.[0] || "Rack",
+    local: rows[1]?.[0] || "",
+    ip: rows[5]?.[0] || "",
+    lastUpdate: rows[3]?.[0] || "",
+    devices: devices
   };
 }

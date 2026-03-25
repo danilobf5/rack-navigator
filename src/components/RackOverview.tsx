@@ -42,6 +42,10 @@ import pde from "@/assets/pde-cche.jpg";
 
  //fisio nova adicionar 
 
+ import fisiorack from "@/assets/fisio_rack.jpg";
+ import fisiopiscina from "@/assets/fisio_piscina.jpg";
+ import fisiodireita from "@/assets/fisio_corredor.jpg";
+
 // Rack images only available for Odonto currently
 const rackImages: Record<string, string> = {
   //odonto
@@ -74,9 +78,12 @@ const rackImages: Record<string, string> = {
   "1847526576" : lephis,
   "34946942": lablinguas,
   "421707565": protocolo,
-  "1364729471": pde
+  "1364729471": pde,
 
   //fisioterapia
+  "1046557767" : fisiorack,
+  "737043596": fisiodireita,
+  "1350824137": fisiopiscina
 
 };
 
@@ -99,7 +106,6 @@ export default function RackOverview({ center, onSelectRack, onBack }: RackOverv
     Promise.all(center.sheets.map((s) => fetchSheetData(s.gid)))
       .then((data) => {
         if (!cancelled) {
-          // Use sheet labels as fallback names
           const named = data.map((r, i) => ({
             ...r,
             name: r.name || r.local || center.sheets[i].label,
@@ -119,8 +125,12 @@ export default function RackOverview({ center, onSelectRack, onBack }: RackOverv
     return () => { cancelled = true; };
   }, [center]);
 
-  const activeCount = (r: RackData) => r.ports.filter((p) => p.status === "ok").length;
-  const issueCount = (r: RackData) => r.ports.filter((p) => p.status === "issue").length;
+  // --- CORREÇÃO AQUI: Agora pegamos as portas de todos os devices do rack ---
+  const getRackPorts = (r: RackData) => r.devices.flatMap(d => d.ports);
+
+  const activeCount = (r: RackData) => getRackPorts(r).filter((p) => p.status === "ok").length;
+  const issueCount = (r: RackData) => getRackPorts(r).filter((p) => p.status === "issue").length;
+  const totalCount = (r: RackData) => getRackPorts(r).length;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -180,7 +190,8 @@ export default function RackOverview({ center, onSelectRack, onBack }: RackOverv
           </div>
 
           <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto">
-            <SummaryCard label="Total Portas" value={racks.reduce((s, r) => s + r.ports.length, 0)} />
+            {/* CORREÇÃO NOS TOTALIZADORES: Usando a nova lógica de soma das portas */}
+            <SummaryCard label="Total Portas" value={racks.reduce((s, r) => s + totalCount(r), 0)} />
             <SummaryCard label="Ativas" value={racks.reduce((s, r) => s + activeCount(r), 0)} color="text-emerald-600" />
             <SummaryCard label="Problemas" value={racks.reduce((s, r) => s + issueCount(r), 0)} color="text-amber-600" />
           </div>
@@ -189,6 +200,8 @@ export default function RackOverview({ center, onSelectRack, onBack }: RackOverv
     </div>
   );
 }
+
+// --- Componentes Auxiliares (RackCard e SummaryCard permanecem iguais) ---
 
 function RackCard({
   rack,
@@ -233,7 +246,7 @@ function RackCard({
       <div className="p-3 space-y-1.5">
         <h3 className="font-bold text-sm text-foreground">{label}</h3>
         <p className="text-xs text-muted-foreground">
-          {rack.switchPorts} portas{rack.hasPatchPanel ? " + Patch Panel" : ""}
+          {rack.devices.length} dispositivos mapeados
         </p>
         <div className="flex gap-3 text-xs">
           <span className="text-emerald-600 font-medium">{active} ativas</span>
