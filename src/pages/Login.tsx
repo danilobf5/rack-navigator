@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Lock, User, ShieldCheck } from "lucide-react"; 
+import { Lock, User, ShieldCheck } from "lucide-react";
 import logo from "@/assets/logo-uenp.png";
 
 const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
@@ -11,8 +11,11 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (user === "admin" && pass === "P2bl0&Lu15@0") {
+
+    if (
+      (user === "admin" && pass === "P2bl0&Lu15@0") ||
+      (user === "samuel" && pass === "1234")
+    ) {
       onLogin();
       toast.success("Acesso autorizado! Bem-vindo.");
       navigate("/");
@@ -24,13 +27,13 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4">
       <div className="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
-        
+
         {/* Lado Esquerdo: Imagem/Logo (Escondido em ecrãs muito pequenos) */}
         <div className="hidden md:flex md:w-1/2 bg-blue-900 p-12 flex-col justify-center items-center text-white text-center space-y-6">
           {/* Substitui o src abaixo pelo caminho da tua imagem da UENP */}
-          <img 
-            src={logo} 
-            alt="Logo UENP" 
+          <img
+            src={logo}
+            alt="Logo UENP"
             className="w-48 h-auto object-contain mb-4 drop-shadow-lg bg-white rounded-2xl"
           />
           <div>
@@ -42,9 +45,9 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
         {/* Lado Direito: Formulário */}
         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
           <div className="md:hidden flex justify-center mb-6">
-             <img src="https://www.uenp.edu.br/images/logo_uenp_vertical.png" alt="UENP" className="h-20" />
+            <img src="https://www.uenp.edu.br/images/logo_uenp_vertical.png" alt="UENP" className="h-20" />
           </div>
-          
+
           <div className="mb-8">
             <h2 className="text-3xl font-extrabold text-slate-800">Login</h2>
             <p className="text-slate-500 mt-2">Introduza as suas credenciais de administrador.</p>
@@ -55,8 +58,8 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
               <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                 <User size={16} /> Utilizador
               </label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 required
                 placeholder="admin"
                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -69,8 +72,8 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
               <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
                 <Lock size={16} /> Palavra-passe
               </label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 required
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -79,8 +82,8 @@ const LoginPage = ({ onLogin }: { onLogin: () => void }) => {
               />
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all shadow-md mt-4"
             >
               <ShieldCheck size={20} />
