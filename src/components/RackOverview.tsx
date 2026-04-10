@@ -46,6 +46,7 @@ import pde from "@/assets/pde-cche.jpg";
  import fisiopiscina from "@/assets/fisio_piscina.jpg";
  import fisiodireita from "@/assets/fisio_corredor.jpg";
 
+<<<<<<< HEAD
 
  //sede Adminstrativa
  import ntisede from "@/assets/nti_sede.jpg";
@@ -54,6 +55,8 @@ import pde from "@/assets/pde-cche.jpg";
  import direcao_sede from "@/assets/direcao_sede.jpg";
  import sala_reuniao from "@/assets/sala_reuniao.jpg";
 
+=======
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
 // Rack images only available for Odonto currently
 const rackImages: Record<string, string> = {
   //odonto
@@ -91,6 +94,7 @@ const rackImages: Record<string, string> = {
   //fisioterapia
   "1046557767" : fisiorack,
   "737043596": fisiodireita,
+<<<<<<< HEAD
   "1350824137": fisiopiscina,
 
   //Sede adm
@@ -102,6 +106,9 @@ const rackImages: Record<string, string> = {
  
   
 
+=======
+  "1350824137": fisiopiscina
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
 
 };
 
@@ -264,7 +271,11 @@ function RackCard({
       <div className="p-3 space-y-1.5">
         <h3 className="font-bold text-sm text-foreground">{label}</h3>
         <p className="text-xs text-muted-foreground">
+<<<<<<< HEAD
           {rack.devices.length} equipamento(s) no rack 
+=======
+          {rack.devices.length} dispositivos mapeados
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
         </p>
         <div className="flex gap-3 text-xs">
           <span className="text-emerald-600 font-medium">{active} ativas</span>

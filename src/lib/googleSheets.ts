@@ -64,7 +64,11 @@ function parseStatus(raw: string): PortInfo["status"] {
   if (s === "OK") return "ok";
 
   // AMARELO: X, Problema, Falha ou Cortado
+<<<<<<< HEAD
   if (s === "X" || s.includes("Problemas") || s.includes("FALHA") || s.includes("CORTADO")) {
+=======
+  if (s === "X" || s.includes("PROBLEMA") || s.includes("FALHA") || s.includes("CORTADO")) {
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
     return "issue";
   }
 
@@ -136,6 +140,7 @@ export async function fetchSheetData(gid: string): Promise<RackData> {
   }
 
   // 3. Formata os dispositivos para o componente visual
+<<<<<<< HEAD
   /*const devices: NetworkDevice[] = Array.from(devicesByColumn.values()).map((dev) => {
     const maxPort = Math.max(...dev.ports.map(p => p.port));
     // Define layout: se passar de 24, assume padrão de 48/52 portas
@@ -153,6 +158,12 @@ export async function fetchSheetData(gid: string): Promise<RackData> {
     totalPorts = 52;
   }
 
+=======
+  const devices: NetworkDevice[] = Array.from(devicesByColumn.values()).map((dev) => {
+    const maxPort = Math.max(...dev.ports.map(p => p.port));
+    // Define layout: se passar de 24, assume padrão de 48/52 portas
+    const totalPorts = maxPort > 24 ? 52 : 24;
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
 
     return {
       id: dev.name,

@@ -3,7 +3,10 @@ import centroCcs from "@/assets/centro-ccs.jpg";
 import centroCcsa from "@/assets/centro-ccsa.jpg";
 import centroCcheClca from "@/assets/centro-cche-clca.jpg";
 import centroFisioterapia from "@/assets/centro-fisioterapia.jpg";
+<<<<<<< HEAD
 import sede from "@/assets/sede.png";
+=======
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
 
 export interface SheetConfig {
   gid: string;
@@ -92,6 +95,7 @@ export const centers: CenterConfig[] = [
       { gid: "1350824137", label: "Corredor Piscina" },
     ],
   },
+<<<<<<< HEAD
   {
     id: "sede",
     name: "Sede Administrativa",
@@ -105,4 +109,6 @@ export const centers: CenterConfig[] = [
       { gid: "97456296", label: "Patrimônio" },
     ],
   },
+=======
+>>>>>>> 8a92c21a51299964234ff75dd2af6efda58e09c7
 ];
